@@ -27,7 +27,8 @@ FIELDNAMES = [
     "market",
     "side",                    # YES / NO
     "strike",
-    "price",                   # entry price (OPEN) or outcome price (CLOSE)
+    "price",
+    "outcome_price",                 # entry price (OPEN) or outcome price (CLOSE)
     "size",                    # number of contracts
     "model_probability",
     "ev_per_contract",

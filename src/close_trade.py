@@ -1,15 +1,24 @@
 """
 CLI utility to close an existing Kalshi trade.
 
-- Auto-fills CLOSE row from OPEN row
-- Computes realized PnL
-- Uses the same CSV schema as trade_logger.py
+Now supports:
+- WIN / LOSS (settlement close)
+- REFUND (PnL forced to 0 by setting outcome_price = entry_price)
+- CASHOUT (early exit at a user-provided exit price in [0, 1])
+
+Notes:
+- Outcome is relative to YOUR position (YES or NO).
+  WIN => payout price 1.0, LOSS => 0.0.
+- CASHOUT uses a market exit price (0..1) as the outcome_price.
+- This script still writes outcome_price into the existing CLOSE.price column.
+  (Your updated analyze_trades now self-validates and can later prefer an explicit
+   outcome_price column if you add one.)
 """
 
 from pathlib import Path
 from datetime import datetime, timezone
 import csv
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 TRADE_LOG_PATH = Path("trades/trade_log.csv")
 
@@ -38,21 +47,39 @@ FIELDNAMES = [
 ]
 
 
+def _prompt_choice(prompt: str, allowed: set[str]) -> str:
+    val = input(prompt).strip().upper()
+    if val not in allowed:
+        raise ValueError(f"Invalid choice '{val}'. Allowed: {', '.join(sorted(allowed))}")
+    return val
+
+
+def _prompt_float(prompt: str, min_v: Optional[float] = None, max_v: Optional[float] = None) -> float:
+    raw = input(prompt).strip()
+    try:
+        val = float(raw)
+    except ValueError:
+        raise ValueError(f"Expected a number, got '{raw}'")
+
+    if min_v is not None and val < min_v:
+        raise ValueError(f"Value must be >= {min_v}, got {val}")
+    if max_v is not None and val > max_v:
+        raise ValueError(f"Value must be <= {max_v}, got {val}")
+    return val
+
+
 def main():
     if not TRADE_LOG_PATH.exists():
         raise FileNotFoundError("trade_log.csv not found")
 
     trade_id = input("Trade ID: ").strip()
+    if not trade_id:
+        raise ValueError("Trade ID cannot be empty")
 
-    outcome_raw = input("Outcome (WIN / LOSS / REFUND): ").strip().upper()
-    if outcome_raw not in {"WIN", "LOSS", "REFUND"}:
-        raise ValueError("Outcome must be WIN, LOSS, or REFUND")
-
-    outcome_price = {
-        "WIN": 1.0,
-        "LOSS": 0.0,
-        "REFUND": 0.5,
-    }[outcome_raw]
+    close_type = _prompt_choice(
+        "Close Type (WIN / LOSS / REFUND / CASHOUT): ",
+        {"WIN", "LOSS", "REFUND", "CASHOUT"}
+    )
 
     notes = input("Notes (optional): ").strip()
 
@@ -61,19 +88,41 @@ def main():
         rows = list(csv.DictReader(f))
 
     open_trade = next(
-        (r for r in rows if r["trade_id"] == trade_id and r["event"] == "OPEN"),
+        (r for r in rows if r.get("trade_id") == trade_id and r.get("event") == "OPEN"),
         None
     )
-
     if open_trade is None:
         raise ValueError(f"No OPEN trade found for trade_id={trade_id}")
 
-    # Prevent duplicate close
-    if any(r for r in rows if r["trade_id"] == trade_id and r["event"] == "CLOSE"):
+    # Prevent duplicate close (full-close model)
+    if any(r for r in rows if r.get("trade_id") == trade_id and r.get("event") == "CLOSE"):
         raise ValueError(f"Trade {trade_id} already CLOSED")
 
-    size = int(open_trade["size"])
-    entry_price = float(open_trade["price"])
+    # Core fields
+    try:
+        size = int(float(open_trade["size"]))
+    except Exception:
+        raise ValueError(f"Invalid size on OPEN row for {trade_id}: {open_trade.get('size')}")
+
+    try:
+        entry_price = float(open_trade["price"])
+    except Exception:
+        raise ValueError(f"Invalid entry price on OPEN row for {trade_id}: {open_trade.get('price')}")
+
+    if size <= 0:
+        raise ValueError(f"OPEN size must be > 0 (got {size})")
+
+    # Determine outcome_price (exit price)
+    if close_type == "WIN":
+        outcome_price = 1.0
+    elif close_type == "LOSS":
+        outcome_price = 0.0
+    elif close_type == "REFUND":
+        # Refund should produce 0 PnL regardless of entry price
+        outcome_price = entry_price
+    else:  # CASHOUT
+        # This is the price you can sell your position at (0..1)
+        outcome_price = _prompt_float("Cashout exit price (0 to 1): ", min_v=0.0, max_v=1.0)
 
     realized_pnl = size * (outcome_price - entry_price)
 
@@ -88,15 +137,34 @@ def main():
     # Override CLOSE-specific fields
     close_row["timestamp_utc"] = datetime.now(timezone.utc).isoformat()
     close_row["event"] = "CLOSE"
-    close_row["price"] = outcome_price
-    close_row["realized_pnl"] = round(realized_pnl, 2)
-    close_row["notes"] = f"{notes} | PnL: {realized_pnl:+.2f}".strip()
+
+    # IMPORTANT: we store the exit/outcome price in CLOSE.price for now
+    close_row["price"] = ""  # keep entry price only on OPEN
+    close_row["outcome_price"] = f"{outcome_price:.6f}"
+
+
+    close_row["realized_pnl"] = f"{realized_pnl:.2f}"
+
+    # Notes: include close type + pnl for easy parsing/debugging
+    # Keep your prior "| PnL:" token so older parsers still work.
+    note_bits = []
+    if notes:
+        note_bits.append(notes)
+    note_bits.append(f"close_type={close_type}")
+    if close_type == "CASHOUT":
+        note_bits.append(f"exit_price={outcome_price:.6f}")
+    note_bits.append(f"PnL: {realized_pnl:+.2f}")
+    close_row["notes"] = " | ".join(note_bits)
 
     with TRADE_LOG_PATH.open("a", newline="") as f:
         writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
         writer.writerow(close_row)
 
-    print(f"Trade {trade_id} CLOSED | PnL: {realized_pnl:+.2f}")
+    print(
+        f"Trade {trade_id} CLOSED ({close_type}) | "
+        f"Entry: {entry_price:.4f} | Exit: {outcome_price:.4f} | "
+        f"Size: {size} | PnL: {realized_pnl:+.2f}"
+    )
 
 
 if __name__ == "__main__":

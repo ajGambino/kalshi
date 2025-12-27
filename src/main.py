@@ -59,6 +59,20 @@ def generate_strike_ladder(
 # Settlement time logic
 # ------------------------
 
+def choose_effective_settlement_mode(now_utc: datetime) -> str:
+    """
+    Kalshi availability rule:
+    - 00:00–07:59 ET: only daily 5pm market available
+    - 08:00+ ET: hourly markets available again (9am opens at 8am ET)
+    """
+    est = ZoneInfo("America/New_York")
+    now_et = now_utc.astimezone(est)
+
+    if 0 <= now_et.hour < 8:
+        return "daily_5pm"
+    return "hourly"
+
+
 def get_next_hourly_settlement(now_utc: datetime) -> Tuple[datetime, float]:
     hour = now_utc.replace(minute=0, second=0, microsecond=0)
     settlement = hour + timedelta(hours=1)
@@ -88,13 +102,15 @@ def print_results_table(
     now_utc: datetime,
     settlement_utc: datetime,
     horizon_hours: float,
-    spot_source: str
+    spot_source: str,
+    effective_mode: str
 ):
     est = ZoneInfo("America/New_York")
 
     print("\n" + "=" * 60)
     print(f"Settlement Reference:  {config.SETTLEMENT_REFERENCE}")
-    print(f"Settlement Mode:       {config.SETTLEMENT_MODE}")
+    print(f"Settlement Mode (config): {config.SETTLEMENT_MODE}")
+    print(f"Settlement Mode (used):   {effective_mode}")
     print(f"Spot Proxy Used:       {spot_source}")
     print(f"Current Time:          {now_utc.astimezone(est).strftime('%Y-%m-%d %H:%M:%S %Z')}")
     print(f"Settlement Time:       {settlement_utc.astimezone(est).strftime('%Y-%m-%d %H:%M:%S %Z')}")
@@ -158,10 +174,13 @@ def run_model(
         print(f"  Gap:    {gap_pct:.2f}%\n")
 
     # Settlement selection
-    if config.SETTLEMENT_MODE == "hourly":
+    effective_mode = choose_effective_settlement_mode(now_utc)
+
+    if effective_mode == "hourly":
         settlement, horizon = get_next_hourly_settlement(now_utc)
     else:
         settlement, horizon = get_next_daily_5pm_settlement(now_utc)
+
 
     # Volatility estimation
     returns = price_data.get_recent_returns(config.LOOKBACK_HOURS)
@@ -184,7 +203,8 @@ def run_model(
         for k in strikes
     ]
 
-    print_results_table(results, now_utc, settlement, horizon, spot_source)
+    print_results_table(results, now_utc, settlement, horizon, spot_source, effective_mode)
+
 
     # ------------------------
     # Optional trade logging
@@ -226,7 +246,7 @@ def run_model(
         annual_vol=annual_vol,
         horizon_hours=horizon,
         settlement_time_utc=settlement,
-        settlement_mode=config.SETTLEMENT_MODE,
+        settlement_mode=effective_mode,
         event=action,
         notes=notes
     )

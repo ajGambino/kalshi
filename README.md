@@ -6,7 +6,7 @@ Stochastic model for short horizon bitcoin price outcomes.
 
 Estimate the probability that BTC will be above a given strike price at an exact future timestamp to compare against market implied probabilities from binary markets like Kalshi.
 
-## Phase 1: Current Implementation
+## Phase 1: Core Probability Model
 
 ### Model Assumptions
 
@@ -48,6 +48,62 @@ FORECAST_HORIZON_HOURS = 1 # Prediction horizon
 PRICE_DATA_INTERVAL_MIN = 5 # Expected data granularity
 ```
 
+## Phase 2: Trading System & Analytics Layer
+
+Full research & trading framework for evaluating model performance over time.
+
+### Trade Logging Engine
+
+All trades are recorded in central ledger: `trades/trade_log.csv`
+
+**Logged fields:**
+
+- Entry details (market, side, strike, size, price)
+- Model diagnostics (probability, volatility, horizon, spot source)
+- Execution diagnostics (spot–candle gap, settlement mode, timestamps)
+- Expected value metrics & realized PnL
+- Settlement metadata
+
+### Backtesting & Performance Analytics
+
+`src/analyze_trades.py` produces full backtest reports:
+
+**Portfolio metrics:**
+
+- Total EV vs realized PnL
+- Win rate, ROI, average edge
+- Average hold time
+
+**Per-trade breakdown:**
+
+- Entry/outcome prices, expected EV, realized PnL
+- Edge % and hold time diagnostics
+- Edge bucket analysis
+
+### Probability Calibration
+
+Exported to `trades/calibration_report.csv`:
+
+- Calibration by decile
+- Brier score & log loss
+
+### Data Integrity
+
+- Automatic numeric coercion (protects against CSV corruption)
+- Backward compatibility with older logs
+- Robust outcome handling (supports early exits, validates ranges)
+- Self healing for corrupted rows
+
+### Research Workflow
+
+Complete quantitative cycle:
+
+1. Generate probabilities
+2. Log trades with diagnostics
+3. Track real outcomes
+4. Analyze performance vs expectations
+5. Measure calibration & improve assumptions iteratively
+
 ### Example Output
 
 ```
@@ -65,7 +121,7 @@ Current BTC Price: $85,235.29
 Annual Volatility: 55.69%
 Horizon Vol: 0.53%
 
-## Strike Linear % Log Dist Probability
+Strike Linear % Log Dist Probability
 
 $83,750.00 -1.74% -0.0176 99.96%
 $84,000.00 -1.45% -0.0146 99.73%
@@ -127,25 +183,68 @@ Compare model probabilities to market implied probabilities:
 - Transaction costs and position sizing
 - Most edges are small and fleeting
 
-## Phase 2+: Planned Extensions
+## Project Roadmap
 
-1. **Fat tailed distributions**: Replace Gaussian with Student-t
-2. **Conditional volatility**: GARCH or exponential weighting
-3. **Time of day effects**: Volatility varies by hour/day
+### Phase 3 — Model Refinement
 
-## Philosophy
+1. **Fat-tailed return distributions**
 
-This is a **probability calculator**, not a prediction machine:
+   - Replace Gaussian with Student-t and empirical return distributions
+   - Improve tail risk estimation and extreme move pricing
 
-- We estimate fair odds
-- Most times will produce no actionable edge
-- Correctness and clarity matter more than sophistication
-- Every assumption is explicit and replaceable
+2. **Conditional volatility**
 
-## Non-Goals
+   - GARCH / EWMA style volatility models
+   - Regime aware volatility scaling
+
+3. **Time-of-day effects**
+   - Learn volatility & liquidity profiles by hour
+   - Adjust horizon risk estimates accordingly
+
+---
+
+### Phase 4 — Market Regime Modeling
+
+Introduce explicit **market regime classification** to adapt strategies and risk.
+
+Planned regime dimensions:
+
+- **Trend vs Range**
+- **Low volatility vs High volatility**
+- **Expansion vs Contraction**
+- **Momentum vs Mean Reversion dominance**
+
+Initial implementation will use only **price & volatility statistics**:
+
+- Realized volatility
+- Trend strength
+- Range compression / expansion
+- Return autocorrelation
+
+Each trade will be tagged with its regime context, enabling:
+
+- Performance analysis by regime
+- Strategy selection by environment
+- Adaptive position sizing
+- Regime aware calibration of probabilities
+
+---
+
+### Phase 5 — Strategy & Risk Layer
+
+- Regime conditioned strategy selection
+- Dynamic risk scaling by regime
+- Portfolio level risk management
+- Long term calibration monitoring
+
+## Philosophy & Scope
+
+This project is a **probability calculator**, not a prediction engine.
+
+It estimates fair odds under explicit assumptions. Most situations produce no actionable edge.  
+Correctness and clarity matter more than sophistication.
 
 This model does **not**:
 
 - Predict price direction
-- Classify market regimes
-- Include technical indicators
+- Use technical indicators
