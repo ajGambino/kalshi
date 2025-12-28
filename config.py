@@ -70,8 +70,8 @@ STRIKE_INCREMENT = 250
 
 # Number of strikes to generate above and below spot price
 # Example: steps_above=6, steps_below=6 → 13 total strikes (including center)
-STRIKE_STEPS_ABOVE = 6
-STRIKE_STEPS_BELOW = 6
+STRIKE_STEPS_ABOVE = 5
+STRIKE_STEPS_BELOW = 5
 
 # ============================================================================
 # Model Assumptions (Phase 1)

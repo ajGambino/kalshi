@@ -14,37 +14,15 @@ Notes:
   (Your updated analyze_trades now self-validates and can later prefer an explicit
    outcome_price column if you add one.)
 """
-
+import sys
 from pathlib import Path
 from datetime import datetime, timezone
 import csv
 from typing import Any, Dict, Optional
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+from src.csv_schema import FIELDNAMES, validate_csv_header, validate_row_required_fields
 
 TRADE_LOG_PATH = Path("trades/trade_log.csv")
-
-FIELDNAMES = [
-    "trade_id",
-    "timestamp_utc",
-    "event",
-    "market",
-    "side",
-    "strike",
-    "price",
-    "size",
-    "model_probability",
-    "ev_per_contract",
-    "ev_dollars",
-    "edge_pct",
-    "realized_pnl",
-    "spot_price",
-    "last_candle_close",
-    "spot_candle_gap_pct",
-    "annual_vol",
-    "horizon_hours",
-    "settlement_time_utc",
-    "settlement_mode",
-    "notes",
-]
 
 
 def _prompt_choice(prompt: str, allowed: set[str]) -> str:
@@ -138,10 +116,9 @@ def main():
     close_row["timestamp_utc"] = datetime.now(timezone.utc).isoformat()
     close_row["event"] = "CLOSE"
 
-    # IMPORTANT: we store the exit/outcome price in CLOSE.price for now
-    close_row["price"] = ""  # keep entry price only on OPEN
-    close_row["outcome_price"] = f"{outcome_price:.6f}"
-
+    # Schema convention: price always = entry, outcome_price always = exit
+    close_row["price"] = f"{entry_price:.6f}"  # preserve entry price from OPEN
+    close_row["outcome_price"] = f"{outcome_price:.6f}"  # exit/settlement price
 
     close_row["realized_pnl"] = f"{realized_pnl:.2f}"
 
@@ -156,8 +133,14 @@ def main():
     note_bits.append(f"PnL: {realized_pnl:+.2f}")
     close_row["notes"] = " | ".join(note_bits)
 
+    # Validate required fields before writing
+    validate_row_required_fields(close_row, "CLOSE")
+
+    # Validate header matches schema (prevent drift)
+    validate_csv_header(TRADE_LOG_PATH)
+
     with TRADE_LOG_PATH.open("a", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
+        writer = csv.DictWriter(f, fieldnames=FIELDNAMES, extrasaction="raise")
         writer.writerow(close_row)
 
     print(

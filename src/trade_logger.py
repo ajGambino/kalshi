@@ -14,36 +14,13 @@ from datetime import datetime, timezone
 import csv
 from typing import Optional, Dict
 
+from src.csv_schema import FIELDNAMES, validate_csv_header, validate_row_required_fields
+
 # -------------------------------------------------
 # Configuration
 # -------------------------------------------------
 
 TRADE_LOG_PATH = Path("trades/trade_log.csv")
-
-FIELDNAMES = [
-    "trade_id",
-    "timestamp_utc",
-    "event",                   # OPEN or CLOSE
-    "market",
-    "side",                    # YES / NO
-    "strike",
-    "price",
-    "outcome_price",                 # entry price (OPEN) or outcome price (CLOSE)
-    "size",                    # number of contracts
-    "model_probability",
-    "ev_per_contract",
-    "ev_dollars",
-    "edge_pct",
-    "realized_pnl",            # populated on CLOSE
-    "spot_price",
-    "last_candle_close",
-    "spot_candle_gap_pct",
-    "annual_vol",
-    "horizon_hours",
-    "settlement_time_utc",
-    "settlement_mode",
-    "notes",
-]
 
 # -------------------------------------------------
 # OPEN / CLOSE logging
@@ -96,11 +73,12 @@ def log_trade(
         "side": side,
         "strike": strike,
         "price": price,
+        "outcome_price": "",  # Always blank on OPEN (exit price filled on CLOSE)
         "size": size,
         "model_probability": round(model_probability, 6) if event == "OPEN" else "",
-        "ev_per_contract": round(ev_per_contract, 4) if ev_per_contract is not None else None,
-        "ev_dollars": round(ev_dollars, 2) if ev_dollars is not None else None,
-        "edge_pct": round(edge_pct, 4) if edge_pct is not None else None,
+        "ev_per_contract": round(ev_per_contract, 4) if ev_per_contract is not None else "",
+        "ev_dollars": round(ev_dollars, 2) if ev_dollars is not None else "",
+        "edge_pct": round(edge_pct, 4) if edge_pct is not None else "",
         "realized_pnl": round(realized_pnl, 2) if realized_pnl is not None else "",
         "spot_price": round(spot_price, 2) if event == "OPEN" else "",
         "last_candle_close": round(last_candle_close, 2) if event == "OPEN" else "",
@@ -112,78 +90,22 @@ def log_trade(
         "notes": notes,
     }
 
+    # Validate required fields before writing
+    validate_row_required_fields(row, event)
+
     write_header = not TRADE_LOG_PATH.exists()
     TRADE_LOG_PATH.parent.mkdir(parents=True, exist_ok=True)
 
+    # Validate header matches schema (prevent drift)
+    validate_csv_header(TRADE_LOG_PATH)
+
     with TRADE_LOG_PATH.open("a", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=FIELDNAMES)
+        writer = csv.DictWriter(f, fieldnames=FIELDNAMES, extrasaction="raise")
         if write_header:
             writer.writeheader()
         writer.writerow(row)
 
     print(f"Trade {event} logged successfully.")
-
-
-# -------------------------------------------------
-# CLOSE helper (minimal inputs)
-# -------------------------------------------------
-
-def log_close(
-    trade_id: str,
-    outcome_price: float,
-    notes: str = ""
-):
-    """
-    Log a CLOSE event for an existing trade.
-
-    Args:
-        trade_id: Existing trade_id from OPEN row
-        outcome_price: 1.0 if ITM, 0.0 if OTM, 0.5 if refund
-        notes: Optional notes
-    """
-
-    if not TRADE_LOG_PATH.exists():
-        raise FileNotFoundError("trade_log.csv not found")
-
-    # Load all trades
-    with TRADE_LOG_PATH.open(newline="") as f:
-        rows = list(csv.DictReader(f))
-
-    open_trade = next(
-        (r for r in rows if r["trade_id"] == trade_id and r["event"] == "OPEN"),
-        None
-    )
-
-    if open_trade is None:
-        raise ValueError(f"No OPEN trade found for trade_id={trade_id}")
-
-    size = int(open_trade["size"])
-    entry_price = float(open_trade["price"])
-
-    # Kalshi PnL
-    realized_pnl = size * (outcome_price - entry_price)
-
-    log_trade(
-        trade_id=trade_id,
-        market=open_trade["market"],
-        side=open_trade["side"],
-        strike=float(open_trade["strike"]),
-        price=outcome_price,
-        size=size,
-        model_probability=0.0,        # unused on CLOSE
-        spot_price=0.0,
-        last_candle_close=0.0,
-        spot_candle_gap_pct=0.0,
-        annual_vol=0.0,
-        horizon_hours=0.0,
-        settlement_time_utc=datetime.fromisoformat(open_trade["settlement_time_utc"]),
-        settlement_mode=open_trade["settlement_mode"],
-        event="CLOSE",
-        realized_pnl=realized_pnl,
-        notes=notes,
-    )
-
-    print(f"Trade {trade_id} CLOSED | PnL: {realized_pnl:+.2f}")
 
 
 # -------------------------------------------------

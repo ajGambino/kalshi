@@ -212,8 +212,8 @@ def run_model(
 
     results_by_strike = {r.strike: r for r in results}
 
-    action = input("Log trade? (OPEN / PASS / skip): ").strip().upper()
-    if action not in {"OPEN", "PASS"}:
+    action = input("Log trade? (OPEN / skip): ").strip().upper()
+    if action != "OPEN":
         return
 
     market = input("Market ID (e.g. BTC-HOURLY-2025-12-17-16): ").strip()
