@@ -67,7 +67,7 @@ MAX_SPOT_CANDLE_GAP_PCT = 0.3  # percent (0.3% = 30 basis points)
 
 # Kalshi uses fixed increments for BTC binary options
 # Standard is $250 for most BTC contracts
-STRIKE_INCREMENT = 250
+STRIKE_INCREMENT = 500
 
 # Number of strikes to generate above and below spot price
 # Example: steps_above=6, steps_below=6 → 13 total strikes (including center)

@@ -215,7 +215,7 @@ def run_model(
 
     results_by_strike = {r.strike: r for r in results}
 
-    action = input("Log trade? (OPEN / PASS / skip): ").strip().upper()
+    action = input("Log trade? (OPEN / skip): ").strip().upper()
     if action not in {"OPEN", "PASS"}:
         return
 
