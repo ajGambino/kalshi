@@ -36,7 +36,8 @@ USE_NEXT_HOUR_SETTLEMENT = True
 #                  Use for intraday contracts that settle every hour
 #   'daily_5pm'  - Target next 17:00 EST only (overnight contracts)
 #                  Use when markets pause overnight until next 5pm Eastern Time
-SETTLEMENT_MODE = 'hourly'  # Change to 'daily_5pm' for overnight contracts or hourly
+#   'auto'       - Auto-select based on Kalshi availability (hourly after 8am ET, daily_5pm before 8am ET)
+SETTLEMENT_MODE = 'daily_5pm'  # Options: 'hourly', 'daily_5pm', or 'auto'
 
 # Default forecast horizon (hours) - only used if USE_NEXT_HOUR_SETTLEMENT = False
 FORECAST_HORIZON_HOURS = 1.0
@@ -70,8 +71,8 @@ STRIKE_INCREMENT = 250
 
 # Number of strikes to generate above and below spot price
 # Example: steps_above=6, steps_below=6 → 13 total strikes (including center)
-STRIKE_STEPS_ABOVE = 5
-STRIKE_STEPS_BELOW = 5
+STRIKE_STEPS_ABOVE = 4
+STRIKE_STEPS_BELOW = 4
 
 # ============================================================================
 # Model Assumptions (Phase 1)

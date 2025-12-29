@@ -174,7 +174,10 @@ def run_model(
         print(f"  Gap:    {gap_pct:.2f}%\n")
 
     # Settlement selection
-    effective_mode = choose_effective_settlement_mode(now_utc)
+    if config.SETTLEMENT_MODE == "auto":
+        effective_mode = choose_effective_settlement_mode(now_utc)
+    else:
+        effective_mode = config.SETTLEMENT_MODE
 
     if effective_mode == "hourly":
         settlement, horizon = get_next_hourly_settlement(now_utc)
@@ -212,8 +215,8 @@ def run_model(
 
     results_by_strike = {r.strike: r for r in results}
 
-    action = input("Log trade? (OPEN / skip): ").strip().upper()
-    if action != "OPEN":
+    action = input("Log trade? (OPEN / PASS / skip): ").strip().upper()
+    if action not in {"OPEN", "PASS"}:
         return
 
     market = input("Market ID (e.g. BTC-HOURLY-2025-12-17-16): ").strip()
