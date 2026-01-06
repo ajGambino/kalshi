@@ -719,6 +719,7 @@ def main():
     print_per_trade_table(per_trade_df_display)
     print_edge_buckets(bucket_df)
     print_incomplete_trades(incomplete)
+    print_summary(summary)
 
     # Calibration (print + export)
     if args.run_calibration:

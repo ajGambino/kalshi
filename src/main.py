@@ -218,7 +218,7 @@ def run_model(
     action = input("Log trade? (OPEN / skip): ").strip().upper()
     if action not in {"OPEN", "PASS"}:
         return
-
+ 
     market = input("Market ID (e.g. BTC-HOURLY-2025-12-17-16): ").strip()
     strike = float(input("Strike: "))
     side = input("Side (YES / NO): ").strip().upper()

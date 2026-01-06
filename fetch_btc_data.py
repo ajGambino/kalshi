@@ -50,9 +50,6 @@ def fetch_btc_data(
     """
     Fetch BTC-USD candle data from Coinbase Exchange public API.
 
-    This function uses Coinbase's real-time exchange data instead of Yahoo Finance
-    to eliminate data delays and ensure proper UTC timestamp handling.
-
     Args:
         days: Number of days of historical data to fetch
         interval: Data interval ('1m' or '5m')
@@ -61,10 +58,7 @@ def fetch_btc_data(
         DataFrame with timezone-aware UTC timestamp and price (close) columns
 
     Notes:
-        - Uses Coinbase Exchange public API (no authentication required)
-        - All timestamps are UTC-aware datetime objects
-        - Coinbase limits responses to 300 candles; multiple requests are batched automatically
-        - "now" is always defined as datetime.now(timezone.utc) to avoid time confusion
+        - Coinbase limits responses to 300 candles
     """
     # Map interval strings to Coinbase granularity (in seconds)
     INTERVAL_MAP = {
