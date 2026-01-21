@@ -718,7 +718,6 @@ def main():
     print_summary(summary)
     print_per_trade_table(per_trade_df_display)
     print_edge_buckets(bucket_df)
-    print_incomplete_trades(incomplete)
     print_summary(summary)
 
     # Calibration (print + export)
@@ -737,6 +736,9 @@ def main():
     per_trade_df_export = build_per_trade_table(completed, include_log_lag=args.include_log_lag)
     per_trade_df_export.to_csv(export_path, index=False)
     print(f"Exported per-trade table to {args.export}\n")
+
+    # Show incomplete trades at the very end
+    print_incomplete_trades(incomplete)
 
 
 if __name__ == "__main__":

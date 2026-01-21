@@ -220,7 +220,7 @@ def run_model(
         return
  
     market = input("Market ID (e.g. BTC-HOURLY-2025-12-17-16): ").strip()
-    strike = float(input("Strike: "))
+    strike = float(input("Strike: ")) 
     side = input("Side (YES / NO): ").strip().upper()
     cost = float(input("Total cost paid ($): "))
     max_payout = float(input("Max payout if correct ($): "))
