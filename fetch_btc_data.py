@@ -8,11 +8,11 @@ This script uses Coinbase Exchange public API instead of Yahoo Finance to:
 
 The script fetches OHLCV candles and extracts the close price for volatility estimation.
 All timestamps in the output CSV are UTC-aware datetime objects.
-
+  
 Usage:
     python fetch_btc_data.py [--days DAYS] [--interval INTERVAL] [--output OUTPUT]
 
-Examples:
+Examples: 
     # Fetch last 7 days of 1-minute data (default)
     python fetch_btc_data.py
 
@@ -26,7 +26,7 @@ Examples:
     python fetch_btc_data.py --output data/my_btc_data.csv
 
 Freshness Diagnostics:
-    After fetching, the script displays:
+    After fetching, the script displays: 
     - Latest candle timestamp (UTC)
     - Current system time (UTC)
     - Candle lag in minutes
@@ -222,7 +222,7 @@ def _fetch_single_coinbase_request(
     end_iso = end_utc.isoformat()
 
     params = {
-        'start': start_iso,
+        'start': start_iso,   
         'end': end_iso,
         'granularity': granularity
     }

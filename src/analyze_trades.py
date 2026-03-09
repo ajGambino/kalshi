@@ -1,6 +1,6 @@
 """
 Trade Log Backtest & Analytics Script
-
+  
 Reads trades/trade_log.csv and produces:
 - Summary statistics (win rate, PnL, EV vs realized, etc.)
 - Per-trade table with detailed metrics

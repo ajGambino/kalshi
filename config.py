@@ -84,5 +84,12 @@ DRIFT_MEAN = 0.0
 
 # Distribution assumption
 # Phase 1: 'gaussian'
-# Phase 2 candidates: 'student_t', 'empirical'
+# Phase 2: 'student_t' (fat tails), future: 'empirical'
 RETURN_DISTRIBUTION = 'gaussian'
+
+# Student-t distribution parameters (only used if RETURN_DISTRIBUTION = 'student_t')
+# Degrees of freedom (df) controls tail thickness
+# Lower df = fatter tails (more extreme moves)
+# Typical range: 3-10 for crypto assets
+# Must be > 2 for finite variance
+STUDENT_T_DF = 5

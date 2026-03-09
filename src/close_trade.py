@@ -119,9 +119,8 @@ def main():
     # Schema convention: price always = entry, outcome_price always = exit
     close_row["price"] = f"{entry_price:.6f}"  # preserve entry price from OPEN
     close_row["outcome_price"] = f"{outcome_price:.6f}"  # exit/settlement price
-
     close_row["realized_pnl"] = f"{realized_pnl:.2f}"
-
+              
     # Notes: include close type + pnl for easy parsing/debugging
     # Keep your prior "| PnL:" token so older parsers still work.
     note_bits = []

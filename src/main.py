@@ -1,6 +1,7 @@
 """
 Main entry point for BTC probability model.
 
+
 Loads data, estimates volatility, outputs probability tables,
 and optionally logs trades to CSV.
 """
@@ -12,7 +13,7 @@ from typing import List, Tuple
 from datetime import datetime, timezone, timedelta
 from zoneinfo import ZoneInfo
 
-# Add project root to path
+# Add project root to path  
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import config
@@ -71,7 +72,6 @@ def choose_effective_settlement_mode(now_utc: datetime) -> str:
     if 0 <= now_et.hour < 8:
         return "daily_5pm"
     return "hourly"
-
 
 def get_next_hourly_settlement(now_utc: datetime) -> Tuple[datetime, float]:
     hour = now_utc.replace(minute=0, second=0, microsecond=0)
@@ -144,7 +144,7 @@ def print_results_table(
 # ------------------------
 # Core model runner
 # ------------------------
-
+    
 def run_model(
     data_file: str,
     strikes: List[float],
