@@ -295,7 +295,7 @@ Supported intervals:
     )
 
     parser.add_argument(
-        '--output',
+        '--output', 
         type=str,
         default='data/btc_prices.csv',
         help='Output CSV file path (default: data/btc_prices.csv)'
